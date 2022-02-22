@@ -2,10 +2,8 @@
 
 FROM python:3.8-slim-buster
 
-RUN mkdir /app
+WORKDIR /data/app
 
-WORKDIR /app
-
-RUN pip install requests numpy pandas tqdm scikit-learn tensorflow
+RUN pip install requests numpy pandas tqdm scikit-learn tensorflow pymongo dnspython
 
 #docker container run -it -v ${pwd}:/app test bash

@@ -1,0 +1,3 @@
+docker-compose up --build
+docker exec -it mongodb bash
+docker inspect <container_id> | grep IPAddress

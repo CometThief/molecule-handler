@@ -5,6 +5,9 @@ import glob
 import gzip
 import time
 import sys
+import smilite
+import pubchempy as pcp
+import DBAPI
 
 #script, file = sys.argv
 
@@ -35,7 +38,31 @@ class mol2pandas:
         self._df_ATOM = _df_ATOM
         self._df_BOND = _df_BOND
         self.zinc_code = zinc_code
-        
+
+    @staticmethod
+    def db_organizer(db = 'zinc15'):
+
+        if db == 'zinc15':
+
+            alltranches = mol2pandas()._all_tranches()
+
+            for current_tranche in tqdm(alltranches):
+
+                zinc_tags = mol2pandas().zinc_tags(current_tranche)
+                smiles_tags = mol2pandas().smiles_tags(zinc_tags)
+                iupac_names = mol2pandas().get_iupac(smiles_tags)
+
+                dict = {
+                    'tranche tag': current_tranche,
+                    'zinc tags': zinc_tags,
+                    'smiles tags': smiles_tags,
+                    'iupac names': iupac_names
+                }
+                print(dict)
+                input()
+                DBAPI.insert('chem_dbs', 'zinc15', dict)
+
+                
 
     @staticmethod
     def chemspace_reduction_size(min, max):
@@ -71,13 +98,52 @@ class mol2pandas:
                     #time.sleep(1)
 
     @staticmethod
+    def zinc_tags(current_tranche):
+        
+        current_tranche = mol2pandas().open_zip(current_tranche)
+        taglist = []
+
+        for x in mol2pandas().get_zincid(current_tranche):
+            taglist.append(x)
+
+        return taglist
+
+    @staticmethod
+    def smiles_tags(zinclist):
+
+        taglist = []
+
+        if isinstance(zinclist, list):
+            for idx, x in enumerate(zinclist):
+                taglist.append(smilite.get_zinc_smile(x, 'zinc15'))
+                print(idx)
+            return taglist
+
+        elif isinstance(zinclist, str):
+            print('fuck off, string')
+        else:
+            print('fuck off, none')
+    
+    @staticmethod
+    def get_iupac(smiles):
+
+        taglist = []
+
+        if isinstance(smiles, list):
+            for s in smiles:
+                compound = pcp.get_compounds(s, namespace='smiles') 
+                taglist.append(compound[0].iupac_name)
+            
+            return taglist
+
+    @staticmethod
     def open_zip(file):
         with gzip.open(file, 'rb') as f:
             return f.read().decode('utf-8').split('\n')
 
     @staticmethod
-    def _all_tranches(dir='./tranches/*'):
-        '''Returns sorted list of all filenames in specified directory. Default is ./tranches'''
+    def _all_tranches(dir='../tranches/*'):
+        '''Returns sorted list of all filenames in specified directory. Default is ../tranches'''
 
         return sorted(glob.glob(dir))
 
@@ -208,7 +274,7 @@ class mol2pandas:
     def maxdist_all(molecule):
         
         molecule = mol2pandas().all_distances(molecule)
-        a = molecule.loc[ : , ['d1']: ]
+        a = molecule.iloc[ : , molecule.columns.get_loc('d1'): ]
         print(a)
         input()
 
@@ -230,5 +296,4 @@ class mol2pandas:
 
 #mol2pandas()._all_tranches()
 
-mol2pandas().chemspace_reduction_size(3.5, 4.5)
-#
+#mol2pandas().chemspace_reduction_size(3.5, 4.5)
